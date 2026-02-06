@@ -11,7 +11,7 @@
 
 set -e
 
-REPO="OWNER/keen-pbr-web"
+REPO="Dronicho/keen-pbr-web"
 INSTALL_DIR="/opt/sbin"
 CONFIG_DIR="/opt/etc/keen-pbr"
 CONFIG_FILE="$CONFIG_DIR/keen-pbr.conf"
@@ -156,18 +156,18 @@ migrate_bird4static() {
     local vpn_count=0
 
     # Extract interface names from filter blocks (ifname = "nwg0";)
-    vpn_interfaces=$(grep -oP 'ifname\s*=\s*"\K[^"]+' "$BIRD_CONF" 2>/dev/null || true)
+    vpn_interfaces=$(sed -n 's/.*ifname[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$BIRD_CONF" 2>/dev/null || true)
 
     # If no ifname found, try protocol direct { interface "xxx"; }
     if [ -z "$vpn_interfaces" ]; then
-        vpn_interfaces=$(grep -oP 'interface\s+"\K[^"]+' "$BIRD_CONF" 2>/dev/null | head -5 || true)
+        vpn_interfaces=$(sed -n 's/.*interface[[:space:]]*"\([^"]*\)".*/\1/p' "$BIRD_CONF" 2>/dev/null | head -5 || true)
     fi
 
     # Extract kernel table numbers
-    table_numbers=$(grep -oP 'kernel\s+table\s+\K[0-9]+' "$BIRD_CONF" 2>/dev/null || true)
+    table_numbers=$(sed -n 's/.*kernel[[:space:]]*table[[:space:]]*\([0-9]*\).*/\1/p' "$BIRD_CONF" 2>/dev/null || true)
 
     # Extract included list files from protocol static sections
-    list_files=$(grep -oP 'include\s+"\K[^"]+' "$BIRD_CONF" 2>/dev/null || true)
+    list_files=$(sed -n 's/.*include[[:space:]]*"\([^"]*\)".*/\1/p' "$BIRD_CONF" 2>/dev/null || true)
 
     if [ -z "$vpn_interfaces" ]; then
         warn "Could not detect VPN interfaces from bird.conf"
@@ -210,7 +210,7 @@ migrate_bird4static() {
         #          route X.X.X.X/Y via 1.2.3.4;
         #          route X.X.X.X/Y reject;
         #          route X.X.X.X/Y blackhole;
-        sed -n 's/^[[:space:]]*route[[:space:]]\+\([0-9./]\+\)[[:space:]].*/\1/p' "$src_path" > "$dest_path" 2>/dev/null || true
+        sed -n 's/^[[:space:]]*route[[:space:]][[:space:]]*\([0-9][0-9./]*\)[[:space:]].*/\1/p' "$src_path" > "$dest_path" 2>/dev/null || true
 
         local count
         count=$(wc -l < "$dest_path" | tr -d ' ')
@@ -338,7 +338,7 @@ generate_default_config() {
 
     # Get available interfaces from keen-pbr
     local ifaces
-    ifaces=$(keen-pbr interfaces 2>/dev/null | grep -oP '^\S+' | head -5 || echo "nwg0")
+    ifaces=$(keen-pbr interfaces 2>/dev/null | awk '{print $1}' | head -5 || echo "nwg0")
 
     local first_iface
     first_iface=$(echo "$ifaces" | head -1)
@@ -410,7 +410,7 @@ main() {
     "$INIT_SCRIPT" start
 
     local router_ip
-    router_ip=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || echo "ROUTER_IP")
+    router_ip=$(ip route get 1.1.1.1 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p' || echo "ROUTER_IP")
 
     printf "\n\033[1;32m  Installation complete!\033[0m\n\n"
     printf "  Web UI: \033[1mhttp://%s:%s\033[0m\n" "$router_ip" "$PORT"
