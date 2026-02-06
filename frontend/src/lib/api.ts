@@ -17,6 +17,7 @@ export interface ListInfo {
 	url?: string;
 	file?: string;
 	entries?: string[];
+	ipsets: string[];
 }
 
 export interface Config {
@@ -118,11 +119,11 @@ export async function saveList(name: string, entries: string[]): Promise<void> {
 	});
 }
 
-export async function createList(name: string, url: string): Promise<void> {
+export async function createList(name: string, url: string, ipset: string): Promise<void> {
 	await fetchJSON('/lists', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ name, url }),
+		body: JSON.stringify({ name, url, ipset }),
 	});
 }
 

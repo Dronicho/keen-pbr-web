@@ -245,6 +245,13 @@ CONFEOF
     fi
 
     if [ -n "$direct_lists_toml" ]; then
+        local internet_iface
+        internet_iface=$(detect_internet_iface)
+        local direct_iface_toml="[]"
+        if [ -n "$internet_iface" ]; then
+            direct_iface_toml="[\"${internet_iface}\"]"
+        fi
+
         cat >> "$CONFIG_FILE" << CONFEOF
 
 [[ipset]]
@@ -254,7 +261,7 @@ CONFEOF
   flush_before_applying = true
 
   [ipset.routing]
-    interfaces = []
+    interfaces = ${direct_iface_toml}
     kill_switch = false
     fwmark = 1002
     table = 1002
@@ -269,13 +276,32 @@ CONFEOF
     [ -n "$direct_lists" ] && log "  Direct lists:$direct_lists"
 }
 
-# Generate minimal config (no example hosts)
+# Detect interfaces
+detect_vpn_iface() {
+    keen-pbr interfaces 2>/dev/null | awk '{print $1}' | grep -E '^(nwg|wg|tun|ovpn)' | head -1 || echo "nwg0"
+}
+
+detect_internet_iface() {
+    keen-pbr interfaces 2>/dev/null | awk '{print $1}' | grep -vE '^(nwg|wg|tun|ovpn|lo)' | head -1 || echo ""
+}
+
+# Generate default config based on keen-pbr reference
 generate_default_config() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$LISTS_DIR"
 
-    local first_iface
-    first_iface=$(keen-pbr interfaces 2>/dev/null | awk '{print $1}' | head -1 || echo "nwg0")
+    local vpn_iface internet_iface
+    vpn_iface=$(detect_vpn_iface)
+    internet_iface=$(detect_internet_iface)
+
+    log "Detected VPN interface: $vpn_iface"
+    [ -n "$internet_iface" ] && log "Detected internet interface: $internet_iface"
+
+    # Build direct interfaces array
+    local direct_iface_toml="[]"
+    if [ -n "$internet_iface" ]; then
+        direct_iface_toml="[\"${internet_iface}\"]"
+    fi
 
     cat > "$CONFIG_FILE" << CONFEOF
 [general]
@@ -285,43 +311,89 @@ generate_default_config() {
   use_keenetic_api = true
   # Use Keenetic DNS from System profile as upstream in generated dnsmasq config
   use_keenetic_dns = true
-  # Fallback DNS server to use if Keenetic RCI call fails
+  # Fallback DNS server to use if Keenetic RCI call fails (e.g. 8.8.8.8 or 1.1.1.1)
+  # Leave empty to disable fallback DNS
   fallback_dns = "8.8.8.8"
 
+# ipset configuration.
+# You can add multiple ipsets.
 [[ipset]]
+  # Name of the ipset.
   ipset_name = "vpn"
-  lists = ["vpn-hosts"]
+  # Add all hosts from the following lists to this ipset.
+  lists = [
+    "vpn-hosts"
+  ]
+  # IP version (4 or 6)
   ip_version = 4
+  # Clear ipset each time before filling it
   flush_before_applying = true
 
   [ipset.routing]
-    interfaces = ["${first_iface}"]
+    # Interface list to direct traffic for IPs in this ipset to.
+    # keen-pbr will use first available interface.
+    interfaces = ["${vpn_iface}"]
+    # Drop all traffic to the hosts from this ipset if all interfaces are down (prevent traffic leaks).
     kill_switch = false
+    # Fwmark to apply to packets matching the list criteria.
     fwmark = 1001
+    # iptables routing table number
     table = 1001
+    # iptables routing rule priority
     priority = 1001
+    # Override DNS server for domains in this ipset. Format: <server>[#port] (e.g. 1.1.1.1#8153 or 8.8.8.8)
     # override_dns = "1.1.1.1"
 
 [[ipset]]
   ipset_name = "direct"
-  lists = ["direct-hosts"]
+  lists = [
+    "direct-hosts"
+  ]
   ip_version = 4
   flush_before_applying = true
 
   [ipset.routing]
-    interfaces = []
+    interfaces = ${direct_iface_toml}
     kill_switch = false
     fwmark = 1002
     table = 1002
     priority = 1002
 
+# Lists with domains/IPs/CIDRs.
+# You can add multiple lists and use them in ipsets by providing their name.
+# You must set "name" and either "url", "file" or "hosts" field for each list.
 [[list]]
   list_name = "vpn-hosts"
-  hosts = []
+  hosts = [
+    "ifconfig.co",
+    "myip2.ru"
+  ]
 
 [[list]]
   list_name = "direct-hosts"
   hosts = []
+
+# You can take lists from different sources.
+# Take a look at https://github.com/v2fly/domain-list-community repository for lists for different services.
+#[[list]]
+#  list_name = "epic-games"
+#  url = "https://raw.githubusercontent.com/v2fly/domain-list-community/refs/heads/master/data/epicgames"
+
+#[[list]]
+#  list_name = "discord-domains"
+#  url = "https://raw.githubusercontent.com/GhostRooter0953/discord-voice-ips/refs/heads/master/main_domains/discord-main-domains-list"
+
+#[[list]]
+#  list_name = "re-filter-ipsum"
+#  url = "https://raw.githubusercontent.com/1andrevich/Re-filter-lists/refs/heads/main/ipsum.lst"
+
+#[[list]]
+#  list_name = "re-filter-community"
+#  url = "https://raw.githubusercontent.com/1andrevich/Re-filter-lists/refs/heads/main/community.lst"
+
+#[[list]]
+#  list_name = "re-filter-domains"
+#  url = "https://raw.githubusercontent.com/1andrevich/Re-filter-lists/refs/heads/main/domains_all.lst"
 CONFEOF
 
     ok "Default config generated: $CONFIG_FILE"

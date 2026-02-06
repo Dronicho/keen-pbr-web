@@ -10,11 +10,12 @@ import (
 
 // ListInfo is the response type for GET /api/lists
 type ListInfo struct {
-	Name    string   `json:"name"`
-	Type    string   `json:"type"` // "inline", "file", "url"
-	URL     string   `json:"url,omitempty"`
-	File    string   `json:"file,omitempty"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"` // "inline", "file", "url"
+	URL    string   `json:"url,omitempty"`
+	File   string   `json:"file,omitempty"`
 	Entries []string `json:"entries,omitempty"`
+	IPSets []string `json:"ipsets"`
 }
 
 func (s *Server) handleGetLists(w http.ResponseWriter, _ *http.Request) {
@@ -24,9 +25,20 @@ func (s *Server) handleGetLists(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	// Build reverse map: list_name -> []ipset_name
+	listIPSets := make(map[string][]string)
+	for _, ipset := range cfg.IPSets {
+		for _, listName := range ipset.Lists {
+			listIPSets[listName] = append(listIPSets[listName], ipset.IPSetName)
+		}
+	}
+
 	lists := make([]ListInfo, 0, len(cfg.Lists))
 	for _, l := range cfg.Lists {
-		info := ListInfo{Name: l.ListName}
+		info := ListInfo{Name: l.ListName, IPSets: listIPSets[l.ListName]}
+		if info.IPSets == nil {
+			info.IPSets = []string{}
+		}
 		switch {
 		case l.URL != "":
 			info.Type = "url"
@@ -52,12 +64,23 @@ func (s *Server) handleGetList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build reverse map: list_name -> []ipset_name
+	listIPSets := make(map[string][]string)
+	for _, ipset := range cfg.IPSets {
+		for _, listName := range ipset.Lists {
+			listIPSets[listName] = append(listIPSets[listName], ipset.IPSetName)
+		}
+	}
+
 	for _, l := range cfg.Lists {
 		if l.ListName != name {
 			continue
 		}
 
-		info := ListInfo{Name: l.ListName}
+		info := ListInfo{Name: l.ListName, IPSets: listIPSets[l.ListName]}
+		if info.IPSets == nil {
+			info.IPSets = []string{}
+		}
 		switch {
 		case l.URL != "":
 			info.Type = "url"
@@ -85,8 +108,9 @@ func (s *Server) handleGetList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
+		Name  string `json:"name"`
+		URL   string `json:"url"`
+		IPSet string `json:"ipset"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -94,12 +118,17 @@ func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Name = strings.TrimSpace(req.Name)
 	req.URL = strings.TrimSpace(req.URL)
+	req.IPSet = strings.TrimSpace(req.IPSet)
 	if req.Name == "" {
 		http.Error(w, "name is required", http.StatusBadRequest)
 		return
 	}
 	if req.URL == "" {
 		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+	if req.IPSet == "" {
+		http.Error(w, "ipset is required", http.StatusBadRequest)
 		return
 	}
 
@@ -114,6 +143,20 @@ func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "list already exists", http.StatusConflict)
 			return
 		}
+	}
+
+	// Find the target ipset and add the list name to it
+	ipsetFound := false
+	for i, ipset := range cfg.IPSets {
+		if ipset.IPSetName == req.IPSet {
+			cfg.IPSets[i].Lists = append(cfg.IPSets[i].Lists, req.Name)
+			ipsetFound = true
+			break
+		}
+	}
+	if !ipsetFound {
+		http.Error(w, "ipset not found: "+req.IPSet, http.StatusBadRequest)
+		return
 	}
 
 	cfg.Lists = append(cfg.Lists, config.List{
@@ -153,6 +196,18 @@ func (s *Server) handleDeleteList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg.Lists = newLists
+
+	// Remove from all ipsets
+	for i, ipset := range cfg.IPSets {
+		filtered := make([]string, 0, len(ipset.Lists))
+		for _, ln := range ipset.Lists {
+			if ln != name {
+				filtered = append(filtered, ln)
+			}
+		}
+		cfg.IPSets[i].Lists = filtered
+	}
+
 	if err := config.Save(s.configPath, cfg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

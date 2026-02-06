@@ -1,21 +1,28 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { getLists, createList, deleteList, type ListInfo } from '$lib/api';
+	import { getLists, getConfig, createList, deleteList, type ListInfo, type IPSet } from '$lib/api';
 
 	let lists: ListInfo[] = $state([]);
+	let ipsets: IPSet[] = $state([]);
 	let error: string | null = $state(null);
 
 	// Add list form
 	let showAdd = $state(false);
 	let newName = $state('');
 	let newUrl = $state('');
+	let newIpset = $state('');
 
-	async function loadLists() {
+	async function loadData() {
 		error = null;
 		try {
-			lists = await getLists();
+			const [listsData, configData] = await Promise.all([getLists(), getConfig()]);
+			lists = listsData;
+			ipsets = configData.ipsets;
+			if (!newIpset && ipsets.length > 0) {
+				newIpset = ipsets[0].ipset_name;
+			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load lists';
+			error = e instanceof Error ? e.message : 'Failed to load data';
 		}
 	}
 
@@ -24,14 +31,14 @@
 	}
 
 	async function handleAdd() {
-		if (!newName.trim() || !newUrl.trim()) return;
+		if (!newName.trim() || !newUrl.trim() || !newIpset) return;
 		error = null;
 		try {
-			await createList(newName.trim(), newUrl.trim());
+			await createList(newName.trim(), newUrl.trim(), newIpset);
 			newName = '';
 			newUrl = '';
 			showAdd = false;
-			await loadLists();
+			await loadData();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to create list';
 		}
@@ -42,14 +49,14 @@
 		error = null;
 		try {
 			await deleteList(name);
-			await loadLists();
+			await loadData();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to delete list';
 		}
 	}
 
 	$effect(() => {
-		loadLists();
+		loadData();
 	});
 </script>
 
@@ -100,12 +107,28 @@
 					style="background: var(--bg-tertiary); border: 1px solid var(--stroke); color: var(--text-primary); font-family: 'IBM Plex Mono', monospace;"
 					onfocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)'; }}
 					onblur={(e) => { e.currentTarget.style.borderColor = 'var(--stroke)'; }}
-					onkeydown={(e) => { if (e.key === 'Enter') handleAdd(); }}
 				/>
+				<div class="flex items-center gap-3">
+					<span class="text-[11px] font-semibold uppercase shrink-0" style="color: var(--text-quad); letter-spacing: 0.05em;">IP Set</span>
+					<div class="flex gap-2">
+						{#each ipsets as ipset}
+							<button
+								onclick={() => { newIpset = ipset.ipset_name; }}
+								class="px-3 py-1.5 text-xs font-medium transition-colors"
+								style="font-family: 'IBM Plex Mono', monospace; {newIpset === ipset.ipset_name
+									? 'background: var(--text-primary); color: var(--bg-primary);'
+									: 'background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--stroke);'
+								}"
+							>
+								{ipset.ipset_name}
+							</button>
+						{/each}
+					</div>
+				</div>
 				<div class="flex gap-2">
 					<button
 						onclick={handleAdd}
-						disabled={!newName.trim() || !newUrl.trim()}
+						disabled={!newName.trim() || !newUrl.trim() || !newIpset}
 						class="px-4 py-2 text-[13px] font-semibold uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
 					>
@@ -126,6 +149,7 @@
 				<tr style="border-bottom: 1px solid var(--stroke);">
 					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Name</th>
 					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Type</th>
+					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">IP Set</th>
 					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Source</th>
 					<th class="w-12"></th>
 				</tr>
@@ -154,6 +178,18 @@
 							>
 								{list.type}
 							</span>
+						</td>
+						<td class="px-4 py-3">
+							<div class="flex flex-wrap gap-1">
+								{#each list.ipsets as ipsetName}
+									<span
+										class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium"
+										style="font-family: 'IBM Plex Mono', monospace; background: var(--bg-tertiary); color: var(--text-secondary);"
+									>{ipsetName}</span>
+								{:else}
+									<span class="text-xs" style="color: var(--text-quad);">&mdash;</span>
+								{/each}
+							</div>
 						</td>
 						<td class="px-4 py-3">
 							{#if list.type === 'url' && list.url}
