@@ -123,10 +123,12 @@ migrate_bird4static() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$LISTS_DIR"
 
-    # ── Detect VPN interfaces from bird.conf ──
+    # ── Detect interfaces from bird4static ──
     local vpn_interfaces=""
+    local internet_iface=""
     local bird_conf="${BIRD_DIR}/bird.conf"
 
+    # VPN interface from bird.conf: ifname = "nwg0"
     if [ -f "$bird_conf" ]; then
         vpn_interfaces=$(sed -n 's/.*ifname[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$bird_conf" 2>/dev/null || true)
         if [ -z "$vpn_interfaces" ]; then
@@ -134,11 +136,22 @@ migrate_bird4static() {
         fi
     fi
 
+    # ISP/internet interface from add-bird4_routes.sh: ISP=eth3
+    for script_file in "${BIRD_DIR}"/scripts/add-bird4_routes.sh "${BIRD_DIR}"/add-bird4_routes.sh; do
+        [ -f "$script_file" ] || continue
+        internet_iface=$(sed -n 's/^ISP=\([^[:space:]#]*\).*/\1/p' "$script_file" 2>/dev/null | head -1 || true)
+        [ -n "$internet_iface" ] && break
+    done
+
     if [ -z "$vpn_interfaces" ]; then
         warn "Could not detect VPN interfaces from bird.conf"
         vpn_interfaces="nwg0"
     fi
+    if [ -z "$internet_iface" ]; then
+        warn "Could not detect ISP interface from bird4static scripts"
+    fi
     log "VPN interfaces: $vpn_interfaces"
+    [ -n "$internet_iface" ] && log "ISP interface: $internet_iface"
 
     # ── Migrate user lists ──
     local vpn_lists=""
@@ -226,6 +239,29 @@ migrate_bird4static() {
   fallback_dns = "8.8.8.8"
 CONFEOF
 
+    local direct_iface_toml="[]"
+    if [ -n "$internet_iface" ]; then
+        direct_iface_toml="[\"${internet_iface}\"]"
+    fi
+
+    if [ -n "$direct_lists_toml" ]; then
+        cat >> "$CONFIG_FILE" << CONFEOF
+
+[[ipset]]
+  ipset_name = "direct"
+  lists = [${direct_lists_toml}]
+  ip_version = 4
+  flush_before_applying = true
+
+  [ipset.routing]
+    interfaces = ${direct_iface_toml}
+    kill_switch = false
+    fwmark = 1001
+    table = 1001
+    priority = 1001
+CONFEOF
+    fi
+
     if [ -n "$vpn_lists_toml" ]; then
         cat >> "$CONFIG_FILE" << CONFEOF
 
@@ -237,31 +273,6 @@ CONFEOF
 
   [ipset.routing]
     interfaces = [${iface_array}]
-    kill_switch = false
-    fwmark = 1001
-    table = 1001
-    priority = 1001
-CONFEOF
-    fi
-
-    if [ -n "$direct_lists_toml" ]; then
-        local internet_iface
-        internet_iface=$(detect_internet_iface)
-        local direct_iface_toml="[]"
-        if [ -n "$internet_iface" ]; then
-            direct_iface_toml="[\"${internet_iface}\"]"
-        fi
-
-        cat >> "$CONFIG_FILE" << CONFEOF
-
-[[ipset]]
-  ipset_name = "direct"
-  lists = [${direct_lists_toml}]
-  ip_version = 4
-  flush_before_applying = true
-
-  [ipset.routing]
-    interfaces = ${direct_iface_toml}
     kill_switch = false
     fwmark = 1002
     table = 1002
@@ -276,32 +287,10 @@ CONFEOF
     [ -n "$direct_lists" ] && log "  Direct lists:$direct_lists"
 }
 
-# Detect interfaces
-detect_vpn_iface() {
-    keen-pbr interfaces 2>/dev/null | awk '{print $1}' | grep -E '^(nwg|wg|tun|ovpn)' | head -1 || echo "nwg0"
-}
-
-detect_internet_iface() {
-    keen-pbr interfaces 2>/dev/null | awk '{print $1}' | grep -vE '^(nwg|wg|tun|ovpn|lo)' | head -1 || echo ""
-}
-
-# Generate default config based on keen-pbr reference
+# Generate default config (no bird4static to migrate from)
 generate_default_config() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$LISTS_DIR"
-
-    local vpn_iface internet_iface
-    vpn_iface=$(detect_vpn_iface)
-    internet_iface=$(detect_internet_iface)
-
-    log "Detected VPN interface: $vpn_iface"
-    [ -n "$internet_iface" ] && log "Detected internet interface: $internet_iface"
-
-    # Build direct interfaces array
-    local direct_iface_toml="[]"
-    if [ -n "$internet_iface" ]; then
-        direct_iface_toml="[\"${internet_iface}\"]"
-    fi
 
     cat > "$CONFIG_FILE" << CONFEOF
 [general]
@@ -317,6 +306,23 @@ generate_default_config() {
 
 # ipset configuration.
 # You can add multiple ipsets.
+# Direct ipset has higher priority (lower number) to force addresses out of VPN.
+[[ipset]]
+  ipset_name = "direct"
+  lists = [
+    "direct-hosts"
+  ]
+  ip_version = 4
+  flush_before_applying = true
+
+  [ipset.routing]
+    # Set your ISP/internet interface here (e.g. eth3, ppp0)
+    interfaces = []
+    kill_switch = false
+    fwmark = 1001
+    table = 1001
+    priority = 1001
+
 [[ipset]]
   # Name of the ipset.
   ipset_name = "vpn"
@@ -332,32 +338,18 @@ generate_default_config() {
   [ipset.routing]
     # Interface list to direct traffic for IPs in this ipset to.
     # keen-pbr will use first available interface.
-    interfaces = ["${vpn_iface}"]
+    # Set your VPN interface here (e.g. nwg0, tun0)
+    interfaces = ["nwg0"]
     # Drop all traffic to the hosts from this ipset if all interfaces are down (prevent traffic leaks).
     kill_switch = false
     # Fwmark to apply to packets matching the list criteria.
-    fwmark = 1001
+    fwmark = 1002
     # iptables routing table number
-    table = 1001
+    table = 1002
     # iptables routing rule priority
-    priority = 1001
+    priority = 1002
     # Override DNS server for domains in this ipset. Format: <server>[#port] (e.g. 1.1.1.1#8153 or 8.8.8.8)
     # override_dns = "1.1.1.1"
-
-[[ipset]]
-  ipset_name = "direct"
-  lists = [
-    "direct-hosts"
-  ]
-  ip_version = 4
-  flush_before_applying = true
-
-  [ipset.routing]
-    interfaces = ${direct_iface_toml}
-    kill_switch = false
-    fwmark = 1002
-    table = 1002
-    priority = 1002
 
 # Lists with domains/IPs/CIDRs.
 # You can add multiple lists and use them in ipsets by providing their name.

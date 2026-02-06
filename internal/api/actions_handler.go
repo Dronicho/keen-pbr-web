@@ -90,6 +90,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 
 func runCommand(name string, args ...string) ActionResult {
 	cmd := exec.Command(name, args...)
+	cmd.Env = append(cmd.Environ(), "PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin")
 	output, err := cmd.CombinedOutput()
 	return ActionResult{
 		Success: err == nil,
