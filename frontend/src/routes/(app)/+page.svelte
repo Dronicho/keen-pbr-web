@@ -58,37 +58,25 @@
 			<p class="text-[11px] font-semibold uppercase mb-2" style="color: var(--text-tertiary); letter-spacing: 0.05em;">
 				Config Path
 			</p>
-			{#if status}
-				<p class="text-sm break-all" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">
-					{status.config_path}
-				</p>
-			{:else}
-				<p class="text-sm" style="color: var(--text-quad);">Loading...</p>
-			{/if}
+			<p class="text-sm break-all" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">
+				{status?.config_path ?? '\u2014'}
+			</p>
 		</div>
 		<div class="p-5" style="border: 1px solid var(--stroke);">
 			<p class="text-[11px] font-semibold uppercase mb-2" style="color: var(--text-tertiary); letter-spacing: 0.05em;">
 				Lists
 			</p>
-			{#if status}
-				<p class="text-4xl font-bold" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-primary);">
-					{status.lists_count}
-				</p>
-			{:else}
-				<p class="text-sm" style="color: var(--text-quad);">Loading...</p>
-			{/if}
+			<p class="text-4xl font-bold" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-primary);">
+				{status?.lists_count ?? 0}
+			</p>
 		</div>
 		<div class="p-5" style="border: 1px solid var(--stroke);">
 			<p class="text-[11px] font-semibold uppercase mb-2" style="color: var(--text-tertiary); letter-spacing: 0.05em;">
 				IP Sets
 			</p>
-			{#if status}
-				<p class="text-4xl font-bold" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-primary);">
-					{status.ipsets_count}
-				</p>
-			{:else}
-				<p class="text-sm" style="color: var(--text-quad);">Loading...</p>
-			{/if}
+			<p class="text-4xl font-bold" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-primary);">
+				{status?.ipsets_count ?? 0}
+			</p>
 		</div>
 	</div>
 

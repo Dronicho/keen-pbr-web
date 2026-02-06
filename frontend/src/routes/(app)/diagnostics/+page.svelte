@@ -14,16 +14,12 @@
 	];
 
 	let results: Record<string, ActionResult | null> = $state({});
-	let loading: Record<string, boolean> = $state({});
 
 	async function loadSection(id: DiagSection['id']) {
-		loading[id] = true;
 		try {
 			results[id] = await getDiagnostic(id);
 		} catch (e) {
 			results[id] = { success: false, output: e instanceof Error ? e.message : 'Failed to load' };
-		} finally {
-			loading[id] = false;
 		}
 	}
 
@@ -55,25 +51,16 @@
 				</div>
 				<button
 					onclick={() => loadSection(section.id)}
-					disabled={loading[section.id]}
-					class="px-3 py-1 text-[11px] font-semibold uppercase transition-colors disabled:opacity-40"
+					class="px-3 py-1 text-[11px] font-semibold uppercase transition-colors"
 					style="color: var(--text-secondary); border: 1px solid var(--stroke); letter-spacing: 0.05em;"
 					onmouseenter={(e) => { e.currentTarget.style.borderColor = 'var(--stroke-hover)'; }}
 					onmouseleave={(e) => { e.currentTarget.style.borderColor = 'var(--stroke)'; }}
 				>
-					{loading[section.id] ? 'Loading...' : 'Refresh'}
+					Refresh
 				</button>
 			</div>
 			<div class="px-5 py-4">
-				{#if loading[section.id] && !results[section.id]}
-					<div class="flex items-center gap-2">
-						<span
-							class="inline-block h-4 w-4 animate-spin rounded-full border-2"
-							style="border-color: var(--text-quad); border-top-color: var(--text-secondary);"
-						></span>
-						<span class="text-sm" style="color: var(--text-tertiary);">Loading...</span>
-					</div>
-				{:else if results[section.id]}
+				{#if results[section.id]}
 					{@const r = results[section.id]}
 					{#if !r.success}
 						<div class="mb-2 text-[11px] font-semibold uppercase" style="color: var(--negative); letter-spacing: 0.05em;">
@@ -85,7 +72,7 @@
 						style="font-family: 'IBM Plex Mono', monospace; color: {r.success ? 'var(--text-secondary)' : 'var(--negative)'};"
 					>{r.output || '(no output)'}</pre>
 				{:else}
-					<p class="text-sm" style="color: var(--text-quad);">No data</p>
+					<p class="text-sm" style="color: var(--text-quad);">&mdash;</p>
 				{/if}
 			</div>
 		</div>

@@ -1,12 +1,11 @@
 #!/bin/sh
 # keen-pbr-web installer for Keenetic routers running Entware
-# Usage: wget -qO- https://raw.githubusercontent.com/Dronicho/keen-pbr-web/main/install.sh | sh
+# Usage: wget -qO- https://raw.githubusercontent.com/Dronicho/keen-pbr-web/refs/heads/master/install.sh | sh
 #
 
 set -e
-
 REPO="Dronicho/keen-pbr-web"
-RAW_BASE="https://raw.githubusercontent.com/${REPO}/main"
+RAW_BASE="https://raw.githubusercontent.com/${REPO}/refs/heads/master"
 INSTALL_DIR="/opt/sbin"
 CONFIG_DIR="/opt/etc/keen-pbr"
 CONFIG_FILE="$CONFIG_DIR/keen-pbr.conf"
@@ -189,31 +188,31 @@ migrate_bird4static() {
     local iface_array=""
     for iface in $vpn_interfaces; do
         [ -n "$iface_array" ] && iface_array="${iface_array}, "
-        iface_array="${iface_array}'${iface}'"
+        iface_array="${iface_array}\"${iface}\""
     done
 
     local vpn_lists_toml="" direct_lists_toml="" list_sections=""
 
     for name in $vpn_lists; do
         [ -n "$vpn_lists_toml" ] && vpn_lists_toml="${vpn_lists_toml}, "
-        vpn_lists_toml="${vpn_lists_toml}'${name}'"
+        vpn_lists_toml="${vpn_lists_toml}\"${name}\""
         if [ -f "${LISTS_DIR}/${name}.lst" ]; then
             list_sections="${list_sections}
 [[list]]
-list_name = '${name}'
-file = '${LISTS_DIR}/${name}.lst'
+  list_name = \"${name}\"
+  file = \"${LISTS_DIR}/${name}.lst\"
 "
         fi
     done
 
     for name in $direct_lists; do
         [ -n "$direct_lists_toml" ] && direct_lists_toml="${direct_lists_toml}, "
-        direct_lists_toml="${direct_lists_toml}'${name}'"
+        direct_lists_toml="${direct_lists_toml}\"${name}\""
         if [ -f "${LISTS_DIR}/${name}.lst" ]; then
             list_sections="${list_sections}
 [[list]]
-list_name = '${name}'
-file = '${LISTS_DIR}/${name}.lst'
+  list_name = \"${name}\"
+  file = \"${LISTS_DIR}/${name}.lst\"
 "
         fi
     done
@@ -221,27 +220,27 @@ file = '${LISTS_DIR}/${name}.lst'
     # Write config — VPN ipset
     cat > "$CONFIG_FILE" << CONFEOF
 [general]
-lists_output_dir = '${LISTS_DIR}'
-use_keenetic_api = true
-use_keenetic_dns = true
-fallback_dns = '8.8.8.8'
+  lists_output_dir = "${LISTS_DIR}"
+  use_keenetic_api = true
+  use_keenetic_dns = true
+  fallback_dns = "8.8.8.8"
 CONFEOF
 
     if [ -n "$vpn_lists_toml" ]; then
         cat >> "$CONFIG_FILE" << CONFEOF
 
 [[ipset]]
-ipset_name = 'vpn'
-lists = [${vpn_lists_toml}]
-ip_version = 4
-flush_before_applying = true
+  ipset_name = "vpn"
+  lists = [${vpn_lists_toml}]
+  ip_version = 4
+  flush_before_applying = true
 
-[ipset.routing]
-interfaces = [${iface_array}]
-kill_switch = false
-fwmark = 1001
-table = 1001
-priority = 1001
+  [ipset.routing]
+    interfaces = [${iface_array}]
+    kill_switch = false
+    fwmark = 1001
+    table = 1001
+    priority = 1001
 CONFEOF
     fi
 
@@ -249,17 +248,17 @@ CONFEOF
         cat >> "$CONFIG_FILE" << CONFEOF
 
 [[ipset]]
-ipset_name = 'direct'
-lists = [${direct_lists_toml}]
-ip_version = 4
-flush_before_applying = true
+  ipset_name = "direct"
+  lists = [${direct_lists_toml}]
+  ip_version = 4
+  flush_before_applying = true
 
-[ipset.routing]
-interfaces = []
-kill_switch = false
-fwmark = 1002
-table = 1002
-priority = 1002
+  [ipset.routing]
+    interfaces = []
+    kill_switch = false
+    fwmark = 1002
+    table = 1002
+    priority = 1002
 CONFEOF
     fi
 
@@ -280,44 +279,49 @@ generate_default_config() {
 
     cat > "$CONFIG_FILE" << CONFEOF
 [general]
-lists_output_dir = '${LISTS_DIR}'
-use_keenetic_api = true
-use_keenetic_dns = true
-fallback_dns = '8.8.8.8'
+  # Directory for downloaded lists
+  lists_output_dir = "${LISTS_DIR}"
+  # Use Keenetic RCI API to check network connection availability on the interface
+  use_keenetic_api = true
+  # Use Keenetic DNS from System profile as upstream in generated dnsmasq config
+  use_keenetic_dns = true
+  # Fallback DNS server to use if Keenetic RCI call fails
+  fallback_dns = "8.8.8.8"
 
 [[ipset]]
-ipset_name = 'vpn'
-lists = ['vpn-hosts']
-ip_version = 4
-flush_before_applying = true
+  ipset_name = "vpn"
+  lists = ["vpn-hosts"]
+  ip_version = 4
+  flush_before_applying = true
 
-[ipset.routing]
-interfaces = ['${first_iface}']
-kill_switch = false
-fwmark = 1001
-table = 1001
-priority = 1001
+  [ipset.routing]
+    interfaces = ["${first_iface}"]
+    kill_switch = false
+    fwmark = 1001
+    table = 1001
+    priority = 1001
+    # override_dns = "1.1.1.1"
 
 [[ipset]]
-ipset_name = 'direct'
-lists = ['direct-hosts']
-ip_version = 4
-flush_before_applying = true
+  ipset_name = "direct"
+  lists = ["direct-hosts"]
+  ip_version = 4
+  flush_before_applying = true
 
-[ipset.routing]
-interfaces = []
-kill_switch = false
-fwmark = 1002
-table = 1002
-priority = 1002
-
-[[list]]
-list_name = 'vpn-hosts'
-hosts = []
+  [ipset.routing]
+    interfaces = []
+    kill_switch = false
+    fwmark = 1002
+    table = 1002
+    priority = 1002
 
 [[list]]
-list_name = 'direct-hosts'
-hosts = []
+  list_name = "vpn-hosts"
+  hosts = []
+
+[[list]]
+  list_name = "direct-hosts"
+  hosts = []
 CONFEOF
 
     ok "Default config generated: $CONFIG_FILE"

@@ -3,24 +3,19 @@
 	import { getLists, createList, deleteList, type ListInfo } from '$lib/api';
 
 	let lists: ListInfo[] = $state([]);
-	let loading = $state(true);
 	let error: string | null = $state(null);
 
 	// Add list form
 	let showAdd = $state(false);
 	let newName = $state('');
 	let newUrl = $state('');
-	let adding = $state(false);
 
 	async function loadLists() {
-		loading = true;
 		error = null;
 		try {
 			lists = await getLists();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load lists';
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -30,7 +25,6 @@
 
 	async function handleAdd() {
 		if (!newName.trim() || !newUrl.trim()) return;
-		adding = true;
 		error = null;
 		try {
 			await createList(newName.trim(), newUrl.trim());
@@ -40,8 +34,6 @@
 			await loadLists();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to create list';
-		} finally {
-			adding = false;
 		}
 	}
 
@@ -113,28 +105,18 @@
 				<div class="flex gap-2">
 					<button
 						onclick={handleAdd}
-						disabled={adding || !newName.trim() || !newUrl.trim()}
+						disabled={!newName.trim() || !newUrl.trim()}
 						class="px-4 py-2 text-[13px] font-semibold uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
 					>
-						{adding ? 'Adding...' : 'Add'}
+						Add
 					</button>
 				</div>
 			</div>
 		</div>
 	{/if}
 
-	{#if loading}
-		<div class="p-8" style="border: 1px solid var(--stroke);">
-			<div class="flex items-center justify-center gap-3">
-				<span
-					class="inline-block h-5 w-5 animate-spin rounded-full border-2"
-					style="border-color: var(--text-quad); border-top-color: var(--text-secondary);"
-				></span>
-				<span class="text-sm" style="color: var(--text-tertiary);">Loading lists...</span>
-			</div>
-		</div>
-	{:else if lists.length === 0}
+	{#if lists.length === 0}
 		<div class="p-8 text-center" style="border: 1px solid var(--stroke);">
 			<p class="text-sm" style="color: var(--text-tertiary);">No lists configured. Add a URL list above or edit the Config.</p>
 		</div>
@@ -142,24 +124,9 @@
 		<table class="w-full" style="border: 1px solid var(--stroke);">
 			<thead>
 				<tr style="border-bottom: 1px solid var(--stroke);">
-					<th
-						class="text-left px-4 py-3 text-[11px] font-semibold uppercase"
-						style="color: var(--text-quad); letter-spacing: 0.05em;"
-					>
-						Name
-					</th>
-					<th
-						class="text-left px-4 py-3 text-[11px] font-semibold uppercase"
-						style="color: var(--text-quad); letter-spacing: 0.05em;"
-					>
-						Type
-					</th>
-					<th
-						class="text-left px-4 py-3 text-[11px] font-semibold uppercase"
-						style="color: var(--text-quad); letter-spacing: 0.05em;"
-					>
-						Source
-					</th>
+					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Name</th>
+					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Type</th>
+					<th class="text-left px-4 py-3 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Source</th>
 					<th class="w-12"></th>
 				</tr>
 			</thead>
@@ -173,9 +140,7 @@
 						onmouseleave={(e) => { e.currentTarget.style.background = 'transparent'; }}
 					>
 						<td class="px-4 py-3">
-							<span class="text-sm font-medium" style="color: var(--text-primary);">
-								{list.name}
-							</span>
+							<span class="text-sm font-medium" style="color: var(--text-primary);">{list.name}</span>
 						</td>
 						<td class="px-4 py-3">
 							<span
@@ -192,23 +157,11 @@
 						</td>
 						<td class="px-4 py-3">
 							{#if list.type === 'url' && list.url}
-								<span
-									class="text-xs truncate block max-w-xs"
-									style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);"
-								>
-									{list.url}
-								</span>
+								<span class="text-xs truncate block max-w-xs" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);">{list.url}</span>
 							{:else if list.type === 'file' && list.file}
-								<span
-									class="text-xs truncate block max-w-xs"
-									style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);"
-								>
-									{list.file}
-								</span>
+								<span class="text-xs truncate block max-w-xs" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);">{list.file}</span>
 							{:else if list.entries}
-								<span class="text-xs" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);">
-									{list.entries.length} {list.entries.length === 1 ? 'entry' : 'entries'}
-								</span>
+								<span class="text-xs" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-tertiary);">{list.entries.length} {list.entries.length === 1 ? 'entry' : 'entries'}</span>
 							{:else}
 								<span class="text-xs" style="color: var(--text-quad);">&mdash;</span>
 							{/if}

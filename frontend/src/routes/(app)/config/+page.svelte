@@ -3,22 +3,18 @@
 
 	let content = $state('');
 	let originalContent = $state('');
-	let loading = $state(true);
 	let saving = $state(false);
 	let error: string | null = $state(null);
 	let message: string | null = $state(null);
 	let hasChanges = $derived(content !== originalContent);
 
 	async function loadConfig() {
-		loading = true;
 		error = null;
 		try {
 			content = await getConfigRaw();
 			originalContent = content;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load config';
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -83,26 +79,16 @@
 
 	<!-- Scrollable editor -->
 	<div class="flex-1 overflow-hidden min-h-0" style="border-left: 1px solid var(--stroke); border-right: 1px solid var(--stroke);">
-		{#if loading}
-			<div class="flex items-center justify-center h-full">
-				<span
-					class="inline-block h-5 w-5 animate-spin rounded-full border-2"
-					style="border-color: var(--text-quad); border-top-color: var(--text-secondary);"
-				></span>
-				<span class="ml-3 text-sm" style="color: var(--text-tertiary);">Loading config...</span>
-			</div>
-		{:else}
-			<textarea
-				bind:value={content}
-				spellcheck="false"
-				autocomplete="off"
-				autocorrect="off"
-				autocapitalize="off"
-				class="w-full h-full p-4 text-sm leading-relaxed resize-none focus:outline-none border-none"
-				style="font-family: 'IBM Plex Mono', monospace; background: var(--bg-code); color: var(--text-secondary);"
-				placeholder="# TOML configuration..."
-			></textarea>
-		{/if}
+		<textarea
+			bind:value={content}
+			spellcheck="false"
+			autocomplete="off"
+			autocorrect="off"
+			autocapitalize="off"
+			class="w-full h-full p-4 text-sm leading-relaxed resize-none focus:outline-none border-none"
+			style="font-family: 'IBM Plex Mono', monospace; background: var(--bg-code); color: var(--text-secondary);"
+			placeholder="# TOML configuration..."
+		></textarea>
 	</div>
 
 	<!-- Fixed bottom bar -->
@@ -113,15 +99,7 @@
 			class="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 			style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
 		>
-			{#if saving}
-				<span
-					class="inline-block h-4 w-4 animate-spin rounded-full border-2"
-					style="border-color: var(--bg-primary); border-top-color: transparent;"
-				></span>
-				Saving...
-			{:else}
-				Save
-			{/if}
+			Save
 		</button>
 		<button
 			onclick={reset}

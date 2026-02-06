@@ -10,18 +10,14 @@
 	let saving = $state(false);
 	let message = $state('');
 	let error = $state('');
-	let loading = $state(true);
 
 	async function load() {
-		loading = true;
 		error = '';
 		try {
 			list = await getList(name);
 			entries = [...(list.entries || [])];
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load list';
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -115,7 +111,6 @@
 			</div>
 		</div>
 
-		<!-- Error/success banners -->
 		{#if error}
 			<div
 				class="mb-3 p-3 text-sm"
@@ -133,8 +128,7 @@
 			</div>
 		{/if}
 
-		<!-- Add entry input (for editable lists) -->
-		{#if isEditable && !loading}
+		{#if isEditable}
 			<div class="flex gap-2">
 				<input
 					type="text"
@@ -161,15 +155,7 @@
 
 	<!-- Scrollable entries -->
 	<div class="flex-1 overflow-y-auto min-h-0">
-		{#if loading}
-			<div class="flex items-center justify-center py-16">
-				<span
-					class="inline-block h-5 w-5 animate-spin rounded-full border-2"
-					style="border-color: var(--text-quad); border-top-color: var(--text-secondary);"
-				></span>
-				<span class="ml-3 text-sm" style="color: var(--text-tertiary);">Loading...</span>
-			</div>
-		{:else if list?.type === 'url'}
+		{#if list?.type === 'url'}
 			<div class="py-8">
 				<p
 					class="text-[11px] font-semibold uppercase mb-2"
@@ -192,12 +178,7 @@
 			<table class="w-full">
 				<thead>
 					<tr style="border-bottom: 1px solid var(--stroke);">
-						<th
-							class="text-left px-4 py-2 text-[11px] font-semibold uppercase"
-							style="color: var(--text-quad); letter-spacing: 0.05em;"
-						>
-							Entry
-						</th>
+						<th class="text-left px-4 py-2 text-[11px] font-semibold uppercase" style="color: var(--text-quad); letter-spacing: 0.05em;">Entry</th>
 						{#if isEditable}
 							<th class="w-12"></th>
 						{/if}
@@ -212,9 +193,7 @@
 							onmouseleave={(e) => { e.currentTarget.style.background = 'transparent'; }}
 						>
 							<td class="px-4 py-2">
-								<span class="text-sm" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">
-									{entry}
-								</span>
+								<span class="text-sm" style="font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">{entry}</span>
 							</td>
 							{#if isEditable}
 								<td class="px-2 py-2 text-right">
@@ -240,7 +219,7 @@
 	</div>
 
 	<!-- Fixed bottom bar -->
-	{#if isEditable && !loading}
+	{#if isEditable}
 		<div class="shrink-0 flex items-center gap-3 pt-4" style="border-top: 1px solid var(--stroke);">
 			<button
 				onclick={save}
@@ -248,15 +227,7 @@
 				class="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 				style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
 			>
-				{#if saving}
-					<span
-						class="inline-block h-4 w-4 animate-spin rounded-full border-2"
-						style="border-color: var(--bg-primary); border-top-color: transparent;"
-					></span>
-					Saving...
-				{:else}
-					Save
-				{/if}
+				Save
 			</button>
 			<button
 				onclick={load}
