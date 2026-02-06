@@ -10,7 +10,28 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(go mod init:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(bunx sv create:*)",
+      "Bash(bun install:*)",
+      "Bash(bun run build:*)",
+      "Bash(go get:*)",
+      "Bash(go test:*)",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__click",
+      "WebFetch(domain:e2b.dev)",
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "WebSearch",
+      "Bash(gh repo view:*)",
+      "WebFetch(domain:forum.keenetic.ru)",
+      "Bash(find:*)",
+      "WebFetch(domain:fossies.org)",
+      "WebFetch(domain:bird.network.cz)",
+      "WebFetch(domain:bafista.ru)"
     ]
   }
 }

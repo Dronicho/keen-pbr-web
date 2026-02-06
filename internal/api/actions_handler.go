@@ -43,6 +43,30 @@ func (s *Server) handleSelfCheck(w http.ResponseWriter, _ *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+func (s *Server) handleUndoRouting(w http.ResponseWriter, _ *http.Request) {
+	result := runCommand("keen-pbr", "undo-routing")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func (s *Server) handleInterfaces(w http.ResponseWriter, _ *http.Request) {
+	result := runCommand("keen-pbr", "interfaces")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func (s *Server) handleDnsmasqConfig(w http.ResponseWriter, _ *http.Request) {
+	result := runCommand("keen-pbr", "print-dnsmasq-config")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func (s *Server) handleDns(w http.ResponseWriter, _ *http.Request) {
+	result := runCommand("keen-pbr", "dns")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 type StatusInfo struct {
 	ConfigPath  string `json:"config_path"`
 	ListsCount  int    `json:"lists_count"`

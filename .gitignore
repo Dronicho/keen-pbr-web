@@ -3,3 +3,6 @@ frontend/node_modules/
 frontend/.svelte-kit/
 frontend/dist/
 *.exe
+.claude
+docs
+.DS_Store

@@ -118,6 +118,10 @@ export async function saveList(name: string, entries: string[]): Promise<void> {
 	});
 }
 
-export async function runAction(action: 'download' | 'apply' | 'self-check'): Promise<ActionResult> {
+export async function runAction(action: 'download' | 'apply' | 'self-check' | 'undo-routing'): Promise<ActionResult> {
 	return fetchJSON(`/actions/${action}`, { method: 'POST' });
+}
+
+export async function getDiagnostic(type: 'interfaces' | 'dnsmasq-config' | 'dns'): Promise<ActionResult> {
+	return fetchJSON(`/diagnostics/${type}`);
 }

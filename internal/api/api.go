@@ -33,5 +33,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/actions/download", s.handleDownload)
 	s.mux.HandleFunc("POST /api/actions/apply", s.handleApply)
 	s.mux.HandleFunc("POST /api/actions/self-check", s.handleSelfCheck)
+	s.mux.HandleFunc("POST /api/actions/undo-routing", s.handleUndoRouting)
+	s.mux.HandleFunc("GET /api/diagnostics/interfaces", s.handleInterfaces)
+	s.mux.HandleFunc("GET /api/diagnostics/dnsmasq-config", s.handleDnsmasqConfig)
+	s.mux.HandleFunc("GET /api/diagnostics/dns", s.handleDns)
 	s.mux.HandleFunc("GET /api/status", s.handleStatus)
 }
