@@ -118,6 +118,20 @@ export async function saveList(name: string, entries: string[]): Promise<void> {
 	});
 }
 
+export async function createList(name: string, url: string): Promise<void> {
+	await fetchJSON('/lists', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ name, url }),
+	});
+}
+
+export async function deleteList(name: string): Promise<void> {
+	await fetchJSON(`/lists/${encodeURIComponent(name)}`, {
+		method: 'DELETE',
+	});
+}
+
 export async function runAction(action: 'download' | 'apply' | 'self-check' | 'undo-routing'): Promise<ActionResult> {
 	return fetchJSON(`/actions/${action}`, { method: 'POST' });
 }

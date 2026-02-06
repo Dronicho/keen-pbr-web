@@ -1,10 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { getLists, type ListInfo } from '$lib/api';
+	import { getLists, createList, deleteList, type ListInfo } from '$lib/api';
 
 	let lists: ListInfo[] = $state([]);
 	let loading = $state(true);
 	let error: string | null = $state(null);
+
+	// Add list form
+	let showAdd = $state(false);
+	let newName = $state('');
+	let newUrl = $state('');
+	let adding = $state(false);
 
 	async function loadLists() {
 		loading = true;
@@ -22,13 +28,50 @@
 		goto(`/lists/${name}`);
 	}
 
+	async function handleAdd() {
+		if (!newName.trim() || !newUrl.trim()) return;
+		adding = true;
+		error = null;
+		try {
+			await createList(newName.trim(), newUrl.trim());
+			newName = '';
+			newUrl = '';
+			showAdd = false;
+			await loadLists();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to create list';
+		} finally {
+			adding = false;
+		}
+	}
+
+	async function handleDelete(e: MouseEvent, name: string) {
+		e.stopPropagation();
+		error = null;
+		try {
+			await deleteList(name);
+			await loadLists();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to delete list';
+		}
+	}
+
 	$effect(() => {
 		loadLists();
 	});
 </script>
 
 <div class="max-w-4xl">
-	<h2 class="text-2xl font-bold mb-8" style="color: var(--text-primary);">Lists</h2>
+	<div class="flex items-center justify-between mb-8">
+		<h2 class="text-2xl font-bold" style="color: var(--text-primary);">Lists</h2>
+		<button
+			onclick={() => { showAdd = !showAdd; }}
+			class="px-4 py-2 text-[13px] font-semibold uppercase transition-colors"
+			style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
+		>
+			{showAdd ? 'Cancel' : 'Add URL List'}
+		</button>
+	</div>
 
 	{#if error}
 		<div
@@ -36,6 +79,48 @@
 			style="background: rgba(235,54,28,0.1); border: 1px solid rgba(235,54,28,0.2); color: var(--negative);"
 		>
 			{error}
+		</div>
+	{/if}
+
+	{#if showAdd}
+		<div class="mb-6 p-5" style="border: 1px solid var(--stroke);">
+			<p
+				class="text-[11px] font-semibold uppercase mb-3"
+				style="color: var(--text-tertiary); letter-spacing: 0.05em;"
+			>
+				New URL List
+			</p>
+			<div class="flex flex-col gap-3">
+				<input
+					type="text"
+					bind:value={newName}
+					placeholder="List name (e.g. community-hosts)"
+					class="px-3 py-2 text-sm focus:outline-none transition-colors"
+					style="background: var(--bg-tertiary); border: 1px solid var(--stroke); color: var(--text-primary); font-family: 'IBM Plex Mono', monospace;"
+					onfocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)'; }}
+					onblur={(e) => { e.currentTarget.style.borderColor = 'var(--stroke)'; }}
+				/>
+				<input
+					type="text"
+					bind:value={newUrl}
+					placeholder="https://example.com/domains.txt"
+					class="px-3 py-2 text-sm focus:outline-none transition-colors"
+					style="background: var(--bg-tertiary); border: 1px solid var(--stroke); color: var(--text-primary); font-family: 'IBM Plex Mono', monospace;"
+					onfocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)'; }}
+					onblur={(e) => { e.currentTarget.style.borderColor = 'var(--stroke)'; }}
+					onkeydown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+				/>
+				<div class="flex gap-2">
+					<button
+						onclick={handleAdd}
+						disabled={adding || !newName.trim() || !newUrl.trim()}
+						class="px-4 py-2 text-[13px] font-semibold uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+						style="background: var(--text-primary); color: var(--bg-primary); letter-spacing: 0.05em;"
+					>
+						{adding ? 'Adding...' : 'Add'}
+					</button>
+				</div>
+			</div>
 		</div>
 	{/if}
 
@@ -51,7 +136,7 @@
 		</div>
 	{:else if lists.length === 0}
 		<div class="p-8 text-center" style="border: 1px solid var(--stroke);">
-			<p class="text-sm" style="color: var(--text-tertiary);">No lists configured. Add lists in the Config page.</p>
+			<p class="text-sm" style="color: var(--text-tertiary);">No lists configured. Add a URL list above or edit the Config.</p>
 		</div>
 	{:else}
 		<table class="w-full" style="border: 1px solid var(--stroke);">
@@ -75,6 +160,7 @@
 					>
 						Source
 					</th>
+					<th class="w-12"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -126,6 +212,20 @@
 							{:else}
 								<span class="text-xs" style="color: var(--text-quad);">&mdash;</span>
 							{/if}
+						</td>
+						<td class="px-2 py-3 text-right">
+							<button
+								onclick={(e) => handleDelete(e, list.name)}
+								class="inline-flex items-center justify-center p-1 opacity-0 group-hover:opacity-100 transition-all"
+								style="color: var(--text-quad);"
+								onmouseenter={(e) => { e.currentTarget.style.color = 'var(--negative)'; }}
+								onmouseleave={(e) => { e.currentTarget.style.color = 'var(--text-quad)'; }}
+								aria-label="Delete {list.name}"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
 						</td>
 					</tr>
 				{/each}

@@ -83,6 +83,85 @@ func (s *Server) handleGetList(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "list not found", http.StatusNotFound)
 }
 
+func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.URL = strings.TrimSpace(req.URL)
+	if req.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+	if req.URL == "" {
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
+	cfg, err := config.Load(s.configPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, l := range cfg.Lists {
+		if l.ListName == req.Name {
+			http.Error(w, "list already exists", http.StatusConflict)
+			return
+		}
+	}
+
+	cfg.Lists = append(cfg.Lists, config.List{
+		ListName: req.Name,
+		URL:      req.URL,
+	})
+
+	if err := config.Save(s.configPath, cfg); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleDeleteList(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, err := config.Load(s.configPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	found := false
+	newLists := make([]config.List, 0, len(cfg.Lists))
+	for _, l := range cfg.Lists {
+		if l.ListName == name {
+			found = true
+			continue
+		}
+		newLists = append(newLists, l)
+	}
+	if !found {
+		http.Error(w, "list not found", http.StatusNotFound)
+		return
+	}
+
+	cfg.Lists = newLists
+	if err := config.Save(s.configPath, cfg); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func (s *Server) handlePutList(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cfg, err := config.Load(s.configPath)
