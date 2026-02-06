@@ -46,4 +46,3 @@ jobs:
           files: |
             dist/keen-pbr-web-linux-mipsle
             dist/keen-pbr-web-linux-arm64
-            install.sh
