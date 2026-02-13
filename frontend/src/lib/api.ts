@@ -91,11 +91,15 @@ export async function getConfigRaw(): Promise<string> {
 }
 
 export async function saveConfigRaw(content: string): Promise<void> {
-	await fetch(API_BASE + '/config/raw', {
+	const res = await fetch(API_BASE + '/config/raw', {
 		method: 'PUT',
 		headers: { 'Content-Type': 'text/plain' },
 		body: content,
 	});
+	if (!res.ok) {
+		const text = await res.text();
+		throw new Error(text || res.statusText);
+	}
 }
 
 export async function getLists(): Promise<ListInfo[]> {
