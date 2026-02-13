@@ -17,7 +17,7 @@ type ListInfo struct {
 	Entries []string `json:"entries,omitempty"`
 }
 
-func (s *Server) handleGetLists(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGetLists(w http.ResponseWriter, _ *http.Request) {
 	cfg, err := config.Load(s.configPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
