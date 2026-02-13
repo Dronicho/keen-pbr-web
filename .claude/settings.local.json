@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__deepwiki__read_wiki_structure",
+      "mcp__deepwiki__read_wiki_contents",
+      "WebFetch(domain:github.com)",
+      "mcp__deepwiki__ask_question",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
