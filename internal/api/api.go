@@ -27,4 +27,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("PUT /api/config", s.handlePutConfig)
 	s.mux.HandleFunc("GET /api/config/raw", s.handleGetConfigRaw)
 	s.mux.HandleFunc("PUT /api/config/raw", s.handlePutConfigRaw)
+	s.mux.HandleFunc("GET /api/lists", s.handleGetLists)
+	s.mux.HandleFunc("GET /api/lists/{name}", s.handleGetList)
+	s.mux.HandleFunc("PUT /api/lists/{name}", s.handlePutList)
 }
