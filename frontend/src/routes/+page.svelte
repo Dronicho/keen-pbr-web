@@ -1,2 +1,2 @@
-<h1 class="text-2xl font-bold p-4">keen-pbr-web</h1>
-<p class="px-4 text-gray-600">Web interface for keen-pbr configuration</p>
+<h2 class="text-xl font-bold text-gray-800 mb-4">Dashboard</h2>
+<p class="text-gray-600">Loading...</p>
